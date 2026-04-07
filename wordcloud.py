@@ -6,6 +6,8 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 from nltk import pos_tag, word_tokenize
 
+
+#adding a test, i should know github by now lol 
 # Ensure resources are available
 nltk.download('punkt')
 nltk.download('wordnet')
