@@ -1,8 +1,9 @@
 '''
 This file will be used to classify any new emails coming in based on 
 specified categories given by the user/training data. Naive Bayes will 
-eventually play a role in this
+ play a role in this
 '''
+import math
 import json
 import os
 from collections import Counter
@@ -21,6 +22,48 @@ def get_wordnet_pos(treebank_tag):
     elif treebank_tag.startswith('R'):
         return wordnet.ADV
     return wordnet.NOUN
+
+import math
+
+def classify_email(processed_words, trained_data):
+    # 1. Basic Metadata
+    categories = trained_data["word_counts"].keys()
+    email_counts = trained_data["metadata"]["category_email_counts"]
+    total_emails = trained_data["metadata"]["total_emails"]
+    
+    # 2. Calculate Global Vocabulary Size (Total unique words across all categories)
+    all_unique_words = set()
+    for cat in categories:
+        all_unique_words.update(trained_data["word_counts"][cat].keys())
+    vocab_size = len(all_unique_words)
+    
+    results = {}
+
+    for cat in categories:
+        # --- PHASE A: PRIOR PROBABILITY ---
+        # P(Category) = emails_in_cat / total_emails
+        prior = email_counts[cat] / total_emails
+        # We start our score with the log of the prior
+        score = math.log(prior)
+        
+        # --- PHASE B: LIKELIHOOD ---
+        cat_word_data = trained_data["word_counts"][cat]
+        # Sum of all word occurrences in this category
+        total_word_count_in_cat = sum(cat_word_data.values())
+        
+        for word in processed_words:
+            # Get count of this specific word in this category (default to 0)
+            word_count = cat_word_data.get(word, 0)
+            
+            # Laplace Smoothing Formula: (count + 1) / (total + vocab_size)
+            word_probability = (word_count + 1) / (total_word_count_in_cat + vocab_size)
+            
+            # Add the log of the probability to our score
+            score += math.log(word_probability)
+            
+        results[cat] = score
+
+    return results
 
 def load_junk_words(filepath):
     """Reads the stopword file and returns a set of words."""
@@ -71,7 +114,21 @@ if os.path.exists(new_email_path):
     print(new_email_counts.most_common(10))
 else:
     print("Error: new_email.txt not found.")
-    
+  
+
+# --- Running the Classifier ---
+# 'processed_words' is the array of lemmas from your new email
+final_scores = classify_email(processed_words, trained_data)
+
+# Sort to find the winner
+winner = max(final_scores, key=final_scores.get)
+
+print("\n--- Naive Bayes Scores (Log Scale) ---")
+for cat, score in final_scores.items():
+    print(f"{cat.upper()}: {score:.4f}")
+
+print(f"\nResult: This email is likely categorized as '{winner.upper()}'")
+  
 '''LEMMA AND REMOVE STOP WORDS FROM NEW EMAIL, SOME PROCESS AS EARLIER 
 ONCE WE HIT THAT, START THE CALCULATION
 
